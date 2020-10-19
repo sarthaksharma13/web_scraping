@@ -29,15 +29,18 @@ def fetch_image_urls(state_query):
     image_count = 0
     results_start = 0
     while image_count < max_links_to_fetch:
+   
         scroll_to_end(wd)
 
         # get all image thumbnail results
         thumbnail_results = wd.find_elements_by_css_selector("img.Q4LuWd")
         number_results = len(thumbnail_results)
-        
-        #print(f"Found: {number_results} search results. Extracting links from {results_start}:{number_results}")
-        
+
+        if len(thumbnail_results[results_start:number_results])==0:
+            print("Looks like you've reached the end")
+            break
         for img in thumbnail_results[results_start:number_results]:
+            
             # try to click every thumbnail such that we can get the real image behind it
             try:
                 img.click()
@@ -54,15 +57,13 @@ def fetch_image_urls(state_query):
             image_count = len(image_urls)
 
             if len(image_urls) >= max_links_to_fetch:
-                #print(f"Found: {len(image_urls)} image links, done!")
                 break
-        else:
-            #print("Found:", len(image_urls), "image links, looking for more ...")
-            time.sleep(30)
-            return
-            load_more_button = wd.find_element_by_css_selector(".mye4qd")
-            if load_more_button:
-                wd.execute_script("document.querySelector('.mye4qd').click();")
+            else:
+                # executing the show more results tab
+                load_more_button = wd.find_element_by_css_selector(".mye4qd")
+                if load_more_button:
+                    #print("executing")
+                    wd.execute_script("document.querySelector('.mye4qd').click();")
 
         # move the result startpoint further down
         results_start = len(thumbnail_results)
@@ -73,14 +74,17 @@ def fetch_image_urls(state_query):
 def persist_image(state_link,query,f):
   
 
-
-    image_content = requests.get(state_link["url"]).content
+    print(state_link["url"])
+    image_content = requests.get(state_link["url"],stream=True).content
     image_file = io.BytesIO(image_content)
-    image = Image.open(image_file).convert('RGB')
-   
-    image.save(state_link["file_path"])
-    f.write(state_link["file_path"].split('/')[-1][:-4] + " " + state_link["url"] + "\n")
-    return f
+    try:
+        image = Image.open(image_file).convert('RGB')
+        image.save(state_link["file_path"])
+        f.write(state_link["file_path"].split('/')[-1][:-4] + " " + state_link["url"] + "\n")
+        return f
+    except:
+        return f
+        
 
 
 
@@ -88,7 +92,7 @@ def persist_image(state_link,query,f):
 wd = webdriver.Chrome('/usr/local/bin/chromedriver')
 save_dir = './images/'
 queries = ["dented cars", "scratched cars"]  #change your set of querries here
-max_img_per_query=1
+max_img_per_query=1500
 state_query=dict()
 state_link=dict()
 for query in queries:
@@ -113,3 +117,4 @@ for query in queries:
     
     f.close()
 wd.quit()
+print("Done")
