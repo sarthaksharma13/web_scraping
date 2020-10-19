@@ -9,11 +9,11 @@ import io
 import requests
 from PIL import Image
 
-def fetch_image_urls(state):
-    query=state["query"]
-    max_links_to_fetch=state["max_links_to_fetch"]
-    wd=state["webdriver"]
-    sleep_between_interactions=state["sleep_between_interactions"]
+def fetch_image_urls(state_query):
+    query=state_query["query"]
+    max_links_to_fetch=state_query["max_links_to_fetch"]
+    wd=state_query["webdriver"]
+    sleep_between_interactions=state_query["sleep_between_interactions"]
     
     def scroll_to_end(wd):
         wd.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -69,51 +69,47 @@ def fetch_image_urls(state):
 
     return image_urls
 
-#(folder_path:str,file_name:str,url:str)
-def persist_image(state):
 
-    folder_path=state["folder_path"]
-    query=state["query"]
-    url=state["url"]
-    file_name = state["file_name"]
+def persist_image(state_link,query,f):
+  
 
-    image_content = requests.get(url).content
+
+    image_content = requests.get(state_link["url"]).content
     image_file = io.BytesIO(image_content)
     image = Image.open(image_file).convert('RGB')
-    
-    if os.path.exists(folder_path):
-        file_path = os.path.join(folder_path,file_name + '.jpg')
-    else:
-        
-        os.mkdir(folder_path)
-        file_path = os.path.join(folder_path, file_name+ '.jpg')
-    image.save(file_path)
-    print("SUCCESS - saved")
+   
+    image.save(state_link["file_path"])
+    f.write(state_link["file_path"].split('/')[-1][:-4] + " " + state_link["url"] + "\n")
+    return f
 
 
 
 # NEED TO DOWNLOAD CHROMEDRIVER, insert path to chromedriver inside parentheses in following line
 wd = webdriver.Chrome('/usr/local/bin/chromedriver')
-
-queries = ["CORONA-VIRUS"]  #change your set of querries here
-state=dict()
+save_dir = './images/'
+queries = ["dented cars", "scratched cars"]  #change your set of querries here
+max_img_per_query=1
+state_query=dict()
+state_link=dict()
 for query in queries:
+    if not os.path.exists(os.path.join(save_dir,query.replace(" ","-"))):
+        os.makedirs(os.path.join(save_dir,query.replace(" ","-")))
+
+    f=open(os.path.join(save_dir,query.replace(" ","-")+'.txt'),'w')
     wd.get('https://google.com')
     search_box = wd.find_element_by_css_selector('input.gLFyf')
     search_box.send_keys(query)
-    #links = fetch_image_urls(query,2,wd)
-    state["query"]=query
-    state["max_links_to_fetch"]=1
-    state["webdriver"]=wd
-    state["sleep_between_interactions"]=1
-    links = fetch_image_urls(state)
-    save_dir = './images/'
+    state_query["query"]=query
+    state_query["max_links_to_fetch"]=max_img_per_query
+    state_query["webdriver"]=wd
+    state_query["sleep_between_interactions"]=0.1
+    links = fetch_image_urls(state_query)
+    
     for i,link in enumerate(links):
-        #persist_image(images_path,query,i)
-        state_=dict()
-        state_["folder_path"]=save_dir
-        state_["query"]=query
-        state_["url"]=link
-        state_["file_name"]=str(i)
-        persist_image(state_)
+       
+        state_link["url"]=link
+        state_link["file_path"]=os.path.join(save_dir,query.replace(" ","-"),str(i).zfill(5) + '.jpg')
+        f = persist_image(state_link,query,f)
+    
+    f.close()
 wd.quit()
