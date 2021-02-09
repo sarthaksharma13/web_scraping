@@ -6,6 +6,6 @@ Script that takes in query keyword, google images for that keyword are saved.
 selenium,
 chromedriver
 
-Above code tested in Python 2.7
+Above code tested in Python 3.6
 
 
